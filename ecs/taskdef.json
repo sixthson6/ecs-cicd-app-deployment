@@ -1,0 +1,29 @@
+{
+  "family": "ecs-app-taskdef",
+  "executionRoleArn": "${ECSTaskExecutionRoleArn}",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "ecs-app-066-container",
+      "image": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ecs-app",
+          "awslogs-region": "eu-central-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512"
+}

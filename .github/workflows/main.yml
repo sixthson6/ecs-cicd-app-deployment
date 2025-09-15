@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to Amazon ECR
+name: Build and Deploy ECS Application
 
 on:
   push:
@@ -10,36 +10,131 @@ permissions:
   contents: read
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout repo
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      # 2. Cache Maven dependencies
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # 3. Set up Java
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # 4. Build Spring Boot Application
+      - name: Build Spring Boot Application
+        run: mvn clean package -DskipTests
+
+      # 5. Configure AWS credentials via OIDC
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::771826808190:role/github-oidc-ecr-role
           aws-region: eu-central-1
 
+      # 6. Login to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # 7. Build, Tag, and Push Docker Image
       - name: Build, Tag, and Push Docker Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ecs-app
+          ECR_REPOSITORY: ecs-repo
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          set -e
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      # 8. Get ECS Task Execution Role ARN
+      - name: Get ECS Task Execution Role ARN
+        id: get-roles
+        run: |
+          ROLE_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ecs-stack-066 \
+            --query "Stacks[0].Outputs[?OutputKey=='ECSTaskExecutionRoleArn'].OutputValue" \
+            --output text)
+          echo "ECSTaskExecutionRoleArn=$ROLE_ARN" >> $GITHUB_ENV
+
+      # 9. Inject dynamic variables into taskdef.json & appspec.yaml
+      - name: Inject variables into ECS deployment files
+        env:
+          ECSTaskExecutionRoleArn: ${{ env.ECSTaskExecutionRoleArn }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ecs-app
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -e
+          sed -i "s|\${ECSTaskExecutionRoleArn}|$ECSTaskExecutionRoleArn|g" ecs/taskdef.json
+          sed -i "s|\${ECR_REGISTRY}|$ECR_REGISTRY|g" ecs/taskdef.json
+          sed -i "s|\${ECR_REPOSITORY}|$ECR_REPOSITORY|g" ecs/taskdef.json
+          sed -i "s|\${IMAGE_TAG}|$IMAGE_TAG|g" ecs/taskdef.json
+          
+          # Register task definition
+          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://ecs/taskdef.json \
+            --query "taskDefinition.taskDefinitionArn" --output text)
+          echo "TASK_DEFINITION_ARN=$TASK_DEFINITION_ARN" >> $GITHUB_ENV
+
+          sed -i "s|\${TASK_DEFINITION_ARN}|$TASK_DEFINITION_ARN|g" ecs/appspec.yaml
+
+      # 10. Package ECS Deployment Files
+      - name: Package Deployment Files
+        run: |
+          set -e
+          mkdir -p build-artifacts
+          zip build-artifacts/deployment-${{ github.sha }}.zip ecs/appspec.yaml ecs/taskdef.json
+
+      # 11. Get Artifact Bucket Name from CloudFormation
+      - name: Get Artifact Bucket Name from CloudFormation
+        id: get-bucket
+        run: |
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name ecs-stack-066 \
+            --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
+            --output text)
+          echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+
+      # 12. Ensure S3 bucket exists
+      - name: Create Artifact S3 Bucket if not exists
+        run: |
+          set -e
+          if ! aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+            echo "Bucket $BUCKET_NAME does not exist. Creating..."
+            aws s3api create-bucket \
+              --bucket "$BUCKET_NAME" \
+              --region eu-central-1 \
+              --create-bucket-configuration LocationConstraint=eu-central-1
+          else
+            echo "Bucket $BUCKET_NAME already exists."
+          fi
+
+      # 13. Upload Deployment Files to S3
+      - name: Upload Deployment Files to S3
+        run: |
+          set -e
+          aws s3 cp build-artifacts/deployment-${{ github.sha }}.zip \
+            s3://$BUCKET_NAME/deployment-${{ github.sha }}.zip
+
+      # 14. Trigger CodePipeline Deployment
+      - name: Trigger CodePipeline Deployment
+        run: |
+          set -e
+          aws codepipeline start-pipeline-execution --name ecs-stack-066-pipeline --region eu-central-1
