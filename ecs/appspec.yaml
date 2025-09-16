@@ -6,4 +6,4 @@ Resources:
         TaskDefinition: "ecs/taskdef.json"
         LoadBalancerInfo:
           ContainerName: "ecs-stack-066-container"
-          ContainerPort: 80
+          ContainerPort: 8080
