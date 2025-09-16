@@ -106,11 +106,7 @@ jobs:
       - name: Get Artifact Bucket Name from CloudFormation
         id: get-bucket
         run: |
-          BUCKET_NAME=$(aws cloudformation describe-stacks \
-            --stack-name ecs-stack-066 \
-            --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucket'].OutputValue" \
-            --output text)
-          echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+          echo "BUCKET_NAME=my-ecs-artifact-bucket-771826808190-euc1" >> $GITHUB_ENV
 
       # 12. Ensure S3 bucket exists
       - name: Create Artifact S3 Bucket if not exists
