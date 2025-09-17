@@ -97,7 +97,8 @@ jobs:
 
       # 10. Package ECS Deployment Files
       - name: Package Deployment Files
-        run: set -e
+        run: |
+          set -e
           mkdir -p build-artifacts
           cp ecs/appspec.yaml build-artifacts/
           cp ecs/taskdef.json build-artifacts/
