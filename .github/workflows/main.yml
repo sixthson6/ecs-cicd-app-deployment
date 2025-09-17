@@ -97,10 +97,14 @@ jobs:
 
       # 10. Package ECS Deployment Files
       - name: Package Deployment Files
-        run: |
-          set -e
+        run: set -e
           mkdir -p build-artifacts
-          zip build-artifacts/deployment-${{ github.sha }}.zip ecs/appspec.yaml ecs/taskdef.json
+          cp ecs/appspec.yaml build-artifacts/
+          cp ecs/taskdef.json build-artifacts/
+          cd build-artifacts
+          zip deployment-${{ github.sha }}.zip appspec.yaml taskdef.json
+          mv deployment-${{ github.sha }}.zip ..
+          cd ..
 
       # 11. Get Artifact Bucket Name from CloudFormation
       - name: Get Artifact Bucket Name from CloudFormation
