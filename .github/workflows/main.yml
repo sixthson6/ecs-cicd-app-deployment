@@ -103,7 +103,6 @@ jobs:
           cp ecs/taskdef.json build-artifacts/
           cd build-artifacts
           zip deployment-${{ github.sha }}.zip appspec.yaml taskdef.json
-          mv deployment-${{ github.sha }}.zip ..
           cd ..
 
       # 11. Get Artifact Bucket Name from CloudFormation
@@ -131,7 +130,7 @@ jobs:
         run: |
           set -e
           aws s3 cp build-artifacts/deployment-${{ github.sha }}.zip \
-            s3://$BUCKET_NAME/deployment-files.zip
+            s3://$BUCKET_NAME/deployment-${{ github.sha }}.zip
 
       # 14. Trigger CodePipeline Deployment
       - name: Trigger CodePipeline Deployment
