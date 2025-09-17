@@ -131,7 +131,7 @@ jobs:
         run: |
           set -e
           aws s3 cp build-artifacts/deployment-${{ github.sha }}.zip \
-            s3://$BUCKET_NAME/deployment-${{ github.sha }}.zip
+            s3://$BUCKET_NAME/deployment-files.zip
 
       # 14. Trigger CodePipeline Deployment
       - name: Trigger CodePipeline Deployment
