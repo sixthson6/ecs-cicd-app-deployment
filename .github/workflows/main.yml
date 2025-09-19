@@ -44,6 +44,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::241533136420:role/ecs-stack-069-GitHubActionsRole
           aws-region: eu-central-1
+          audience: sts.amazonaws.com
 
       # 6. Login to Amazon ECR
       - name: Login to Amazon ECR
