@@ -42,7 +42,7 @@ jobs:
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::241533136420:role/ecs-stack-063-GitHubActionsRole
+          role-to-assume: arn:aws:iam::241533136420:role/ecs-stack-064-GitHubActionsRole
           aws-region: eu-central-1
           audience: sts.amazonaws.com
 
@@ -55,7 +55,7 @@ jobs:
       - name: Build, Tag, and Push Docker Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ecs-stack-063-repository
+          ECR_REPOSITORY: ecs-stack-064-repository
           IMAGE_TAG: ${{ github.sha }}
         run: |
           set -e
@@ -69,7 +69,7 @@ jobs:
         id: get-roles
         run: |
           ROLE_ARN=$(aws cloudformation describe-stacks \
-            --stack-name ecs-stack-063 \
+            --stack-name ecs-stack-064 \
             --query "Stacks[0].Outputs[?OutputKey=='ECSTaskExecutionRoleArn'].OutputValue" \
             --output text)
           echo "ECSTaskExecutionRoleArn=$ROLE_ARN" >> $GITHUB_ENV
@@ -138,4 +138,4 @@ jobs:
       - name: Trigger CodePipeline Deployment
         run: |
           set -e
-          aws codepipeline start-pipeline-execution --name ecs-stack-063-pipeline --region eu-central-1
+          aws codepipeline start-pipeline-execution --name ecs-stack-064-pipeline --region eu-central-1
