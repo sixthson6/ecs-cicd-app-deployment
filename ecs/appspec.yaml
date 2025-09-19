@@ -5,5 +5,5 @@ Resources:
       Properties:
         TaskDefinition: <TASK_DEFINITION_ARN>
         LoadBalancerInfo:
-          ContainerName: "ecs-stack-064-container"
+          ContainerName: "ecs-stack-065-container"
           ContainerPort: 8080
