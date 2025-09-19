@@ -1,10 +1,10 @@
 {
-  "family": "ecs-app-taskdef",
+  "family": "ecs-app-063-taskdef",
   "executionRoleArn": "${ECSTaskExecutionRoleArn}",
   "networkMode": "awsvpc",
   "containerDefinitions": [
     {
-      "name": "ecs-app-062-container",
+      "name": "ecs-app-063-container",
       "image": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
       "portMappings": [
         {
