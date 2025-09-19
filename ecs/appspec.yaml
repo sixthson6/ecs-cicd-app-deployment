@@ -7,4 +7,3 @@ Resources:
         LoadBalancerInfo:
           ContainerName: "ecs-stack-064-container"
           ContainerPort: 8080
-        DesiredCount: 1
