@@ -4,7 +4,7 @@
   "networkMode": "awsvpc",
   "containerDefinitions": [
     {
-      "name": "ecs-app-066-container",
+      "name": "ecs-app-062-container",
       "image": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
       "portMappings": [
         {
